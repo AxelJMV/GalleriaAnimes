@@ -2,11 +2,13 @@ package com.misanimes.animefavoritos.service;
 
 
 import com.misanimes.animefavoritos.dto.UserRegisterDto;
+import com.misanimes.animefavoritos.entity.Anime;
 import com.misanimes.animefavoritos.entity.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.misanimes.animefavoritos.repository.UserRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -15,6 +17,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+
     public UserService(UserRepository userRepository , BCryptPasswordEncoder passwordEncoder) {
 
         this.userRepository = userRepository;
@@ -64,4 +67,16 @@ public class UserService {
         return passwordEncoder.matches(rawPassword, user.getPassword());
     }
 
+    public List<Anime> getUserAnimes(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<Anime> animes = user.getAnimes();
+        //validamos si la lista de animes esta vacio o llena
+        if(animes.isEmpty()){
+            throw new RuntimeException("El usuario no tienes animes registrados");
+        }
+
+        return animes;
+    }
 }
