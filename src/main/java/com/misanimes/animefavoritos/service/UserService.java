@@ -5,6 +5,7 @@ import com.misanimes.animefavoritos.dto.UserRegisterDto;
 import com.misanimes.animefavoritos.entity.Anime;
 import com.misanimes.animefavoritos.entity.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.misanimes.animefavoritos.repository.UserRepository;
 
@@ -16,17 +17,20 @@ public class UserService {
 
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository , BCryptPasswordEncoder passwordEncoder) {
-
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
+
     public User registerUser(UserRegisterDto userDto){
         if(userRepository.findByUsername(userDto.getUsername()).isPresent()){
-            throw new RuntimeException("Usuario ya existe");
+            throw new IllegalArgumentException("El nombre de usuario ya está registrado");
+        }
+        if(userRepository.findByEmail(userDto.getEmail()).isPresent()){
+            throw new IllegalArgumentException("El correo ya está registrado");
         }
 
         // Crear entidad User desde el DTO
@@ -37,6 +41,7 @@ public class UserService {
 
         return userRepository.save(user);
     }
+
 
     public Optional<User> getUserByUsername(String username){
         return userRepository.findByUsername(username);
@@ -55,17 +60,38 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public boolean authenticateUser(String identifier, String rawPassword) {
+//    public boolean authenticateUser(String identifier, String rawPassword) {
+//        User user;
+//        if(identifier.contains("@")){ // si contiene un arroba es por que sera un correo
+//            user = userRepository.findByEmail(identifier).orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+//        }else{ // Si no, es un username
+//            user = userRepository.findByUsername(identifier)
+//                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+//        }
+//
+//        return passwordEncoder.matches(rawPassword, user.getPassword());
+//    }
+
+
+    // Servicio para autenticar al usuario
+    public Optional<User> authenticateUser(String identifier, String rawPassword) {
         User user;
-        if(identifier.contains("@")){ // si contiene un arroba es por que sera un correo
-            user = userRepository.findByEmail(identifier).orElseThrow(() -> new RuntimeException("Correo no encontrado"));
-        }else{ // Si no, es un username
+        if (identifier.contains("@")) { // Si contiene '@', es un correo
+            user = userRepository.findByEmail(identifier)
+                    .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+        } else { // Si no, es un username
             user = userRepository.findByUsername(identifier)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         }
 
-        return passwordEncoder.matches(rawPassword, user.getPassword());
+        // Validar la contraseña
+        if (passwordEncoder.matches(rawPassword, user.getPassword())) {
+            return Optional.of(user); // Si es válido, retorna el usuario
+        } else {
+            return Optional.empty(); // Si no, retorna vacío
+        }
     }
+
 
     public List<Anime> getUserAnimes(Long id) {
         User user = userRepository.findById(id)
