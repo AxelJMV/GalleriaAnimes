@@ -8,6 +8,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
 
@@ -22,6 +23,11 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
+    }
+
+
     // Generar un token
     public String generateToken(String username, Long userId) {
         return Jwts.builder()
@@ -29,7 +35,7 @@ public class JwtService {
                 .claim("userId", userId) // Agregar el ID como claim
                 .setIssuedAt(new Date()) // Fecha de emisión
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration)) // Expiración
-                .signWith(SignatureAlgorithm.HS256, secretKey) // Firmar con clave secreta
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)// Firmar con clave secreta
                 .compact();
     }
 
@@ -59,7 +65,7 @@ public class JwtService {
     // Extraer todas las claims
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes())) // Convertir la clave secreta
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

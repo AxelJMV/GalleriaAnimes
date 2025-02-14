@@ -46,17 +46,39 @@ public class UserService {
     public Optional<User> getUserByUsername(String username){
         return userRepository.findByUsername(username);
     }
+    public Optional<User> getUserByEmail(String email){
+        return userRepository.findByEmail(email);
+    }
 
-    public User updateUser(Long id, String email, String password) {
+    public User updateUser(Long id, String email,String username, String password) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        //Validar que el username no este en uso por otro usuario
+        userRepository.findByUsername(username)
+                .ifPresent(existingUser -> {
+                    if(!existingUser.getEmail().equals(email)){
+                        throw new RuntimeException("El username ya está en uso por otro usuario");
+                    }
+                });
+
+        // Validar si el nuevo email ya está en uso por otro usuario
+        userRepository.findByEmail(email)
+                .ifPresent(existingUser -> {
+                    if (!existingUser.getId().equals(id)) { // Asegurarse de que no sea el mismo usuario
+                        throw new RuntimeException("El email ya está en uso por otro usuario");
+                    }
+                });
+
+        // Actualizar el username y email
+        user.setUsername(username);
         user.setEmail(email);
 
-        // Solo encriptar si la contraseña ha cambiado
+        // Solo encriptar y actualizar si la contraseña ha cambiado
         if (!password.isBlank()) {
             user.setPassword(passwordEncoder.encode(password));
         }
 
+        // Guardar los cambios en la base de datos
         return userRepository.save(user);
     }
 
